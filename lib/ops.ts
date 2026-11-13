@@ -3,6 +3,9 @@
 
 export type OpsStaff = { id: string; full_name: string; phone: string | null; active: boolean };
 
+/** An operations manager (public.profiles with role operations). */
+export type OpsManager = { id: string; full_name: string; email: string };
+
 export type OpsClient = { id: string; name: string; code: string; lead_id: string | null };
 
 export type OpsSite = {
@@ -12,7 +15,8 @@ export type OpsSite = {
   city: string | null;
   address: string | null;
   visits_per_month: number;
-  supervisor_id: string | null;
+  pco_id: string | null;
+  manager_id: string | null;
   status: "pending" | "active";
 };
 
@@ -48,13 +52,15 @@ export type OpsVisit = {
   status: VisitStatus;
   visit_date: string;
   visit_time: string;
-  supervisor_id: string | null;
+  manager_id: string | null;
+  pco_id: string | null;
   crew_ids: string[];
+  treatments: string[];
   note: string | null;
 };
 
 export const VISIT_COLUMNS =
-  "id, kind, site_id, prospect_name, complaint_id, job_code, source, status, visit_date, visit_time, supervisor_id, crew_ids, note";
+  "id, kind, site_id, prospect_name, complaint_id, job_code, source, status, visit_date, visit_time, manager_id, pco_id, crew_ids, treatments, note";
 
 export const KIND_LABEL: Record<VisitKind, string> = {
   monthly: "Monthly visit",
@@ -85,6 +91,18 @@ export const DECISION_LABEL: Record<ComplaintDecision, string> = {
   meeting: "Meeting",
   closed: "Closed",
 };
+
+/** Common treatments, offered as suggestions (any text is allowed). */
+export const TREATMENTS = [
+  "General pest control spray",
+  "Cockroach gel baiting",
+  "Rodent bait stations",
+  "Fogging / fumigation",
+  "Ant gel treatment",
+  "Termite treatment",
+  "Bed bug treatment",
+  "Fly control",
+];
 
 export const SLOTS = ["08:00", "09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00"];
 

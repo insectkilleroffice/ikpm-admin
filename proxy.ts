@@ -26,9 +26,9 @@ export async function proxy(request: NextRequest) {
   );
 
   // Refreshes the auth session cookie. Do not remove.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() checks the token locally, so every page change does not wait on the Auth server.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? data.claims : null;
 
   const path = request.nextUrl.pathname;
   if (!user && (path.startsWith("/sales") || path.startsWith("/proposals") || path.startsWith("/operations"))) {

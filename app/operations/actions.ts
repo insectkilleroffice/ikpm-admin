@@ -42,45 +42,72 @@ export async function decideComplaint(input: {
   return done(error);
 }
 
-/** New contract: client (new or existing) + site + first visit with a fixed day. */
+export type ContractVisit = { date: string; time: string; treatments: string[] };
+export type ContractSite = {
+  name: string;
+  city: string;
+  address: string;
+  visitsPerMonth: number;
+  managerId: string;
+  pcoId: string;
+  visits: ContractVisit[];
+};
+
+/**
+ * New contract, like a proposal: one client (new or existing) with one or more sites.
+ * Each site has its operations manager and its service visits (day, time, treatments).
+ */
 export async function newContract(input: {
   clientId: string;
   clientName: string;
   leadId: string;
-  siteName: string;
-  city: string;
-  address: string;
-  visitsPerMonth: number;
-  supervisorId: string;
-  date: string;
-  time: string;
+  sites: ContractSite[];
   note: string;
 }): Promise<Result> {
   if (!input.clientId && !input.clientName.trim()) return { error: "Write the client name" };
-  if (!input.siteName.trim()) return { error: "Write the site name" };
-  if (!input.date) return { error: "Pick the day of the first visit" };
+  if (!input.sites.length) return { error: "Add at least one site" };
+  for (const [i, s] of input.sites.entries()) {
+    const name = s.name.trim() || `Site ${i + 1}`;
+    if (!s.name.trim()) return { error: `Write the name of site ${i + 1}` };
+    if (!s.managerId) return { error: `Pick the operations manager for ${name}` };
+    if (!s.visits.length) return { error: `Add at least one visit for ${name}` };
+    const noDay = s.visits.findIndex((v) => !v.date);
+    if (noDay > -1) return { error: `Pick the day for visit ${noDay + 1} at ${name}` };
+    const noTreat = s.visits.findIndex((v) => !v.treatments.some((t) => t.trim()));
+    if (noTreat > -1) return { error: `Pick the treatment for visit ${noTreat + 1} at ${name}` };
+  }
   const { error } = await (await ops()).rpc("new_contract", {
     p_client_id: input.clientId || null,
     p_client_name: input.clientName,
     p_lead_id: input.leadId || null,
-    p_site_name: input.siteName,
-    p_city: input.city,
-    p_address: input.address,
-    p_visits_per_month: input.visitsPerMonth,
-    p_supervisor_id: input.supervisorId || null,
-    p_date: input.date,
-    p_time: input.time,
+    p_sites: input.sites.map((s) => ({
+      name: s.name.trim(),
+      city: s.city,
+      address: s.address,
+      visits_per_month: s.visitsPerMonth,
+      manager_id: s.managerId,
+      pco_id: s.pcoId || null,
+      visits: s.visits.map((v) => ({ date: v.date, time: v.time, treatments: v.treatments.map((t) => t.trim()).filter(Boolean) })),
+    })),
     p_note: input.note,
   });
   return done(error);
 }
 
-/** Meeting or inspection straight onto the operations calendar. */
+/** Move a site to another operations manager. */
+export async function setSiteManager(siteId: string, managerId: string): Promise<Result> {
+  if (!managerId) return { error: "Pick the operations manager" };
+  const { error } = await (await ops()).rpc("set_site_manager", { p_site_id: siteId, p_manager_id: managerId });
+  return done(error);
+}
+
+/** Meeting or inspection straight onto a manager's calendar. */
 export async function assignMeeting(input: {
   kind: "meeting" | "inspection";
   siteId: string;
   prospectName: string;
   leadId: string;
+  managerId: string;
   date: string;
   time: string;
   crewIds: string[];
@@ -88,12 +115,14 @@ export async function assignMeeting(input: {
   note: string;
 }): Promise<Result> {
   if (!input.siteId && !input.prospectName.trim()) return { error: "Pick the site or write the name of the lead" };
+  if (!input.siteId && !input.managerId) return { error: "Pick the operations manager" };
   if (!input.date) return { error: "Pick the day" };
   const { error } = await (await ops()).rpc("assign_meeting", {
     p_kind: input.kind,
     p_site_id: input.siteId || null,
     p_prospect_name: input.prospectName,
     p_lead_id: input.leadId || null,
+    p_manager_id: input.siteId ? null : input.managerId,
     p_date: input.date,
     p_time: input.time,
     p_crew_ids: input.crewIds,
@@ -103,7 +132,7 @@ export async function assignMeeting(input: {
   return done(error);
 }
 
-/** Field team (supervisors and PCOs). They do not sign in. */
+/** Field team (PCOs). They do not sign in. */
 export async function addStaff(fullName: string, phone: string): Promise<Result> {
   if (!fullName.trim()) return { error: "Write the name" };
   const { error } = await (await ops())

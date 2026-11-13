@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { signedInUser } from "@/lib/supabase/user";
 import type { Profile } from "@/lib/types";
 import { signOut } from "./actions";
 
@@ -20,9 +21,7 @@ export default async function AdminShell({
 }) {
   await connection();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await signedInUser(supabase);
   if (!user) redirect("/login");
 
   const { data: me } = await supabase
