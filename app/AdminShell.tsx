@@ -15,7 +15,7 @@ export default async function AdminShell({
   active,
   children,
 }: {
-  active: "sales" | "proposals";
+  active: "sales" | "proposals" | "operations";
   children: (ctx: { supabase: SupabaseClient; me: Profile }) => Promise<ReactNode>;
 }) {
   await connection();
@@ -46,6 +46,7 @@ export default async function AdminShell({
   const links = [
     { id: "sales", href: "/sales", label: "Sales" },
     { id: "proposals", href: "/proposals", label: "Proposals" },
+    { id: "operations", href: "/operations", label: "Operations" },
   ] as const;
 
   return (
